@@ -44,8 +44,8 @@ Use the standard library `logging` module—not `print()`, except for short-live
 
 - Put logging setup in `src/<package_name>/logger.py`. Expose only `get_logger()` and `configure_logging()`.
 - Write logs to stdout and to `logs/app.log`.
-- Before work starts, log a `Starting ...` message.
-- When work finishes, log either `Successfully ...` or `Failed ...` (not both).
+- Before work starts, log a `Starting <action>...` message. Always end the message text with a literal ellipsis (`...`), e.g. `"Starting environment variable fetch..."`.
+- When work finishes, log either `Successfully <action>` or `Failed <action>` (not both).
 - Never log secrets, tokens, passwords, cookies, authorization headers, API keys, or sensitive personal data.
 - Never use `logger.exception()` at error boundaries — it dumps the full traceback and exception message, which may contain env var values, file paths, or SDK error payloads. Log only the exception type: `logger.error(f"Failed ...: {type(e).__name__}")`.
 
