@@ -1,0 +1,237 @@
+---
+description: Python standards
+globs: "**/*.py"
+alwaysApply: true
+---
+
+# Python version
+
+Use Python 3.14 unless this repository explicitly specifies a different version.
+
+Prefer modern Python syntax and standard library features, but do not use syntax that makes the code harder to read.
+
+# Dependency management (uv)
+
+Use `uv` instead of `pip`.
+
+- Add a dependency: `uv add library`
+- Add a dev dependency: `uv add --dev library`
+- Run a script: `uv run script.py`
+- Run a module: `uv run python -m module_name`
+
+Do not create `requirements.txt`. Use `pyproject.toml` and `uv.lock`.
+
+Do not manually edit `uv.lock`.
+
+# Project structure
+
+Prefer a `src/` layout for application code.
+
+```text
+project/
+  src/
+    package_name/
+      __init__.py
+      logger.py
+  tests/
+  logs/
+  pyproject.toml
+```
+
+# Logging
+
+Use the standard library `logging` module—not `print()`, except for short-lived debugging.
+
+- Put logging setup in `src/<package_name>/logger.py`. Expose only `get_logger()` and `configure_logging()`.
+- Write logs to stdout and to `logs/app.log`.
+- Before work starts, log a `Starting ...` message.
+- When work finishes, log either `Successfully ...` or `Failed ...` (not both).
+- Never log secrets, tokens, passwords, cookies, authorization headers, API keys, or sensitive personal data.
+- Never use `logger.exception()` at error boundaries — it dumps the full traceback and exception message, which may contain env var values, file paths, or SDK error payloads. Log only the exception type: `logger.error(f"Failed ...: {type(e).__name__}")`.
+
+Use `encoding="utf-8"` on the file handler.
+
+Standard log format:
+
+```python
+_FORMAT = "%(asctime)s - %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+```
+
+# Entrypoints
+
+Keep real logic out of `main()`.
+
+Use `run()` for orchestration and `main()` as the final error boundary.
+
+```python
+import logging
+import sys
+
+logger = logging.getLogger(__name__)
+
+
+def run() -> None:
+    """Run the application."""
+    ...
+
+
+def main() -> int:
+    """Run the application and return a process exit code."""
+    try:
+        run()
+        return 0
+    except Exception as e:
+        logger.error(f"Failed deploy: {type(e).__name__}")
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+# Naming
+
+Never use single-letter variable names. Always choose a name that describes what the value represents.
+
+```python
+# bad
+d = tmp_path / "dist"
+e = get_error()
+x = response.json()
+
+# good
+dist = tmp_path / "dist"
+error = get_error()
+payload = response.json()
+```
+
+# Control flow
+
+Avoid one-line if/else forms (including ternary expressions). Use a normal `if` / `else` block so branches stay easy to read and step through.
+
+```python
+# bad — ternary crammed on one line
+timeout = short_timeout if fast_path else long_timeout
+
+# good — explicit branches
+if fast_path:
+    timeout = short_timeout
+else:
+    timeout = long_timeout
+```
+
+Never use the walrus operator (`:=`). Assign to a variable first, then use it in the condition or expression.
+
+```python
+# bad — walrus operator
+if (match := pattern.search(text)):
+    handle(match)
+
+# good — explicit assignment
+match = pattern.search(text)
+if match:
+    handle(match)
+```
+
+# Module-private constants
+
+Prefix module-level constants with a single leading underscore when they are used only within that file (not imported or re-exported elsewhere). Public names are reserved for values that are part of the module’s external API.
+
+```python
+# good — file-local tuning knobs
+_DNS_TIMEOUT_SECONDS = 5
+
+# good — shared or documented API surface
+DEFAULT_PAGE_SIZE = 50
+```
+
+# Google Python docstrings
+
+Follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings) for docstrings whenever you **create a new Python module** or **add a function or method** in this project. Add or update docstrings in the same change—do not leave new code undocumented.
+
+## Module docstrings
+
+Every new `.py` file must start with a module docstring:
+
+- First line: one-line summary.
+- Blank line, then an extended description (purpose, main entry points, or how the module fits in the app).
+
+## Function and method docstrings
+
+Every new function or method needs:
+
+- **Summary line** — imperative mood, ends with a period.
+- **Blank line**, then optional extra paragraphs for non-obvious behavior.
+- **`Args:`** — one entry per parameter (purpose only when the signature already has type hints).
+- **`Returns:`** — describe the return value when the function returns something meaningful.
+- **`Raises:`** — list exceptions callers should handle when the function raises them.
+
+Do not duplicate parameter types in `Args:` when type annotations are present.
+
+## When to update existing docstrings
+
+Update docstrings when you change a function’s contract: parameters, return value, side effects, or raised exceptions.
+
+## Example
+
+```python
+"""Utilities for validating and normalizing records.
+
+Exposes :func:`normalize_record` as the primary entry point.
+"""
+
+
+def normalize_record(data: dict[str, str]) -> Record:
+    """Validate and normalize a raw record into a structured model.
+
+    Args:
+        data: Raw key-value fields from the caller.
+
+    Returns:
+        A validated record with normalized field values.
+
+    Raises:
+        ValueError: If required fields are missing or invalid.
+    """
+```
+
+# Ruff after edits
+
+After making code changes in this repository, run:
+
+`uv run ruff check --fix . && uv run ruff format .`
+
+# Tests for new functionality
+
+When you add new functionality, add or extend automated tests in the same change so the new behavior is covered. Tests should be written to a production-like standard.
+
+Use `pytest`.
+
+Run tests with:
+
+`uv run pytest`
+
+## What to test
+
+Test business logic and observable behaviour — not implementation details. Each test should cover a meaningful outcome a user or caller would care about. Avoid tests that only verify internal state or private mechanics that could change without breaking any contract.
+
+Aim for a small number of high-impact tests rather than exhaustive coverage of trivial paths.
+
+## Test organisation
+
+Group tests into classes by the unit under test. Use one class per function or logical concern.
+
+```python
+class TestFetchEnvVariables:
+    def test_raises_when_aws_credentials_missing(...): ...
+    def test_raises_when_dist_directory_missing(...): ...
+    def test_returns_valid_config(...): ...
+
+class TestUploadToS3:
+    def test_uploads_all_files_with_relative_keys(...): ...
+```
+
+## Docstrings
+
+Follow the same Google-style docstring standard as production code.
+```
