@@ -113,10 +113,11 @@ Keep real logic out of `main()`.
 Use `run()` for orchestration and `main()` as the final error boundary.
 
 ```python
-import logging
 import sys
 
-logger = logging.getLogger(__name__)
+from package_name.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 def run() -> None:
