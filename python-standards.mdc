@@ -37,6 +37,12 @@ project/
   pyproject.toml
 ```
 
+# Configuration and secrets
+
+- Read configuration from environment variables (or from a loader that reads them).
+- Never commit `.env` or other files that contain real secrets.
+- Always add a `.env-template` file with the same keys as `.env`, placeholder values, and short comments. Commit `.env-template` so others know which variables to set.
+
 # Logging
 
 Use the standard library `logging` module—not `print()`, except for short-lived debugging.
@@ -99,12 +105,6 @@ def get_logger(name: str) -> logging.Logger:
     _configure_logging()
     return logging.getLogger(name)
 ```
-
-# Configuration and secrets
-
-- Read configuration from environment variables (or from a loader that reads them).
-- Never commit `.env` or other files that contain real secrets.
-- Always add a `.env-template` file with the same keys as `.env`, placeholder values, and short comments. Commit `.env-template` so others know which variables to set.
 
 # Entrypoints
 
@@ -272,16 +272,6 @@ def normalize_record(data: dict[str, str]) -> Record:
     """
 ```
 
-# Ruff after edits
-
-After making code changes in this repository, run:
-
-`uv run ruff check --fix . && uv run ruff format .`
-
-# README
-
-When you change the project, update `README.md` in the same change so it stays in sync.
-
 # Tests for new functionality
 
 When you add new functionality, add or extend automated tests in the same change so the new behavior is covered. Tests should be written to a production-like standard.
@@ -311,3 +301,13 @@ class TestFetchEnvVariables:
 class TestUploadToS3:
     def test_uploads_all_files_with_relative_keys(...): ...
 ```
+
+# Ruff after edits
+
+After making code changes in this repository, run:
+
+`uv run ruff check --fix . && uv run ruff format .`
+
+# README
+
+When you change the project, update `README.md` in the same change so it stays in sync.
