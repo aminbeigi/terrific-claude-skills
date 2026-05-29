@@ -75,10 +75,9 @@ Minimal `src/<package_name>/logger.py` template:
 Exposes :func:`configure_logging` and :func:`get_logger`.
 """
 
-from __future__ import annotations
-
 import functools
 import logging
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -110,7 +109,7 @@ def configure_logging(*, level: LogLevel) -> None:
         level=level,
         format=_LOG_FORMAT,
         handlers=[
-            logging.StreamHandler(),
+            logging.StreamHandler(sys.stdout),
             logging.FileHandler(_LOG_FILE, encoding="utf-8"),
         ],
     )
