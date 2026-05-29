@@ -41,7 +41,7 @@ project/
 
 - Read configuration from environment variables (or from a loader that reads them).
 - Never commit `.env` or other files that contain real secrets.
-- Always add a `.env_template` file with the same keys as `.env`, placeholder values, and short comments. Commit `.env_template` so others know which variables to set.
+- Always add a `.env_template` file with the same keys as `.env` and placeholder values. Commit `.env_template` so others know which variables to set.
 
 # Logging
 
