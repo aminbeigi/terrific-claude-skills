@@ -45,7 +45,6 @@ Use the standard library `logging` module—not `print()`, except for short-live
 - When a step finishes, log either `Successfully <action>` or `Failed <action>`—not both.
 - If the step **raises** to `main()`, log `Starting` / `Successfully` in the step and one `Failed …` in `main()` only. No per-step `Failed` lines. A `Starting` without `Successfully` means that step failed.
 - Never log secrets, tokens, passwords, cookies, authorization headers, API keys, or sensitive personal data.
-- Never use `logger.exception()` at error boundaries — it dumps the full traceback and exception message, which may contain env var values, file paths, or SDK error payloads. Log only the exception type: `logger.error(f"Failed ...: {type(e).__name__}")`.
 
 Use `encoding="utf-8"` on the file handler.
 
