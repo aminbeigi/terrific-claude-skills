@@ -5,10 +5,7 @@ alwaysApply: true
 ---
 
 # Python version
-
-Use Python 3.14 unless this repository explicitly specifies a different version.
-
-Prefer modern Python syntax and standard library features, but do not use syntax that makes the code harder to read.
+Use Python 3.14.
 
 # Dependency management (uv)
 
@@ -45,7 +42,8 @@ Use the standard library `logging` module—not `print()`, except for short-live
 - Put logging setup in `src/<package_name>/logger.py`. Expose only `get_logger()` and `configure_logging()`.
 - Write logs to stdout and to `logs/app.log`.
 - Before work starts, log a `Starting <action>...` message. Always end the message text with a literal ellipsis (`...`), e.g. `"Starting environment variable fetch..."`.
-- When work finishes, log either `Successfully <action>` or `Failed <action>` (not both).
+- When a step finishes, log either `Successfully <action>` or `Failed <action>`—not both.
+- If the step **raises** to `main()`, log `Starting` / `Successfully` in the step and one `Failed …` in `main()` only. No per-step `Failed` lines. A `Starting` without `Successfully` means that step failed.
 - Never log secrets, tokens, passwords, cookies, authorization headers, API keys, or sensitive personal data.
 - Never use `logger.exception()` at error boundaries — it dumps the full traceback and exception message, which may contain env var values, file paths, or SDK error payloads. Log only the exception type: `logger.error(f"Failed ...: {type(e).__name__}")`.
 
@@ -81,7 +79,7 @@ def main() -> int:
         run()
         return 0
     except Exception as e:
-        logger.error(f"Failed deploy: {type(e).__name__}")
+        logger.error(f"Fatal error: {e}")
         return 1
 
 
@@ -201,6 +199,10 @@ After making code changes in this repository, run:
 
 `uv run ruff check --fix . && uv run ruff format .`
 
+# README
+
+When you change the project, update `README.md` in the same change so it stays in sync.
+
 # Tests for new functionality
 
 When you add new functionality, add or extend automated tests in the same change so the new behavior is covered. Tests should be written to a production-like standard.
@@ -229,9 +231,4 @@ class TestFetchEnvVariables:
 
 class TestUploadToS3:
     def test_uploads_all_files_with_relative_keys(...): ...
-```
-
-## Docstrings
-
-Follow the same Google-style docstring standard as production code.
 ```
