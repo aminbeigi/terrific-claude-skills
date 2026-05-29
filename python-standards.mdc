@@ -32,6 +32,8 @@ project/
       logger.py
   tests/
   logs/
+  .env
+  .env-template
   pyproject.toml
 ```
 
@@ -39,7 +41,7 @@ project/
 
 Use the standard library `logging` module—not `print()`, except for short-lived debugging.
 
-- Put logging setup in `src/<package_name>/logger.py`. Expose only `get_logger()` and `configure_logging()`.
+- Put logging setup in `src/<package_name>/logger.py`. Expose only `get_logger()`.
 - Write logs to stdout and to `logs/app.log`.
 - Before work starts, log a `Starting <action>...` message. Always end the message text with a literal ellipsis (`...`), e.g. `"Starting environment variable fetch..."`.
 - When a step finishes, log either `Successfully <action>` or `Failed <action>`—not both.
@@ -51,8 +53,58 @@ Use `encoding="utf-8"` on the file handler.
 Standard log format:
 
 ```python
-_FORMAT = "%(asctime)s - %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+_LOG_FORMAT = "%(asctime)s - %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
 ```
+
+Minimal `src/<package_name>/logger.py` template:
+
+```python
+"""Application logging configuration.
+
+Exposes :func:`get_logger` for the rest of the app.
+"""
+
+import functools
+import logging
+from pathlib import Path
+
+_LOG_FORMAT = "%(asctime)s - %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+_LOG_FILE = Path("logs/app.log")
+
+
+@functools.cache
+def _configure_logging() -> None:
+    """Configure root logging to stdout and ``logs/app.log``."""
+    _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format=_LOG_FORMAT,
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(_LOG_FILE, encoding="utf-8"),
+        ],
+    )
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Return a logger for the given module name.
+
+    Args:
+        name: Logger name, typically ``__name__`` of the calling module.
+
+    Returns:
+        A :class:`logging.Logger` with logging configured on first use.
+    """
+    _configure_logging()
+    return logging.getLogger(name)
+```
+
+# Configuration and secrets
+
+- Read configuration from environment variables (or from a loader that reads them).
+- Never commit `.env` or other files that contain real secrets.
+- Always add a `.env-template` file with the same keys as `.env`, placeholder values, and short comments. Commit `.env-template` so others know which variables to set.
 
 # Entrypoints
 
@@ -88,7 +140,7 @@ if __name__ == "__main__":
 
 # Naming
 
-Never use single-letter variable names. Always choose a name that describes what the value represents.
+Do not use single-letter variable names except loop indices `i`, `j`, and `k` in `for` loops. Otherwise choose a name that describes what the value represents.
 
 ```python
 # bad
@@ -96,10 +148,19 @@ d = tmp_path / "dist"
 e = get_error()
 x = response.json()
 
+except ValueError as e:
+    ...
+
 # good
 dist = tmp_path / "dist"
 error = get_error()
 payload = response.json()
+
+for i in range(10):
+    ...
+
+except ValueError as error:
+    ...
 ```
 
 # Control flow
