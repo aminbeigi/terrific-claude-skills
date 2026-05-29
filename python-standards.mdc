@@ -47,12 +47,17 @@ project/
 
 Use the standard library `logging` module—not `print()`, except for short-lived debugging.
 
-- Put logging setup in `src/<package_name>/logger.py`. Expose only `get_logger()`.
+- Put logging setup in `src/<package_name>/logger.py`. Expose `configure_logging()` and `get_logger()`.
+- Call `configure_logging(level=...)` once at startup (in `main()`). Other modules call `get_logger(__name__)` only.
+- `logger.py` must not read `os.environ` or other config directly. The entrypoint (or a config loader) decides the level and passes it in.
+- Only two root log levels are allowed: `logging.INFO` (default for production) and `logging.DEBUG` (local troubleshooting).
 - Write logs to stdout and to `logs/app.log`.
 - Before work starts, log a `Starting <action>...` message. Always end the message text with a literal ellipsis (`...`), e.g. `"Starting environment variable fetch..."`.
 - When a step finishes, log either `Successfully <action>` or `Failed <action>`—not both.
-- If the step **raises** to `main()`, log `Starting` / `Successfully` in the step and one `Failed …` in `main()` only. No per-step `Failed` lines. A `Starting` without `Successfully` means that step failed.
+- If the step **raises** to `main()`, log `Starting` / `Successfully` in the step and one `Failed …` in `main()` only. No per-step failure tracebacks—use the safe exception logging rules below.
 - Never log secrets, tokens, passwords, cookies, authorization headers, API keys, or sensitive personal data.
+- Never use `logger.exception()` in normal error paths. Full tracebacks can leak secrets embedded in exception messages (e.g. AWS keys in `str(exc)`).
+- In `main()`, log failures at ERROR with the exception **type only**. Attach a traceback only when DEBUG is enabled (see entrypoint example below).
 
 Use `encoding="utf-8"` on the file handler.
 
@@ -67,24 +72,42 @@ Minimal `src/<package_name>/logger.py` template:
 ```python
 """Application logging configuration.
 
-Exposes :func:`get_logger` for the rest of the app.
+Exposes :func:`configure_logging` and :func:`get_logger`.
 """
+
+from __future__ import annotations
 
 import functools
 import logging
 from pathlib import Path
+from typing import Literal
 
-_LOG_FORMAT = "%(asctime)s - %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
-_LOG_FILE = Path("logs/app.log")
+_LOG_FORMAT = (
+    "%(asctime)s - %(levelname)-5s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
+)
+_LOG_FILE = Path("logs") / "app.log"
+LogLevel = Literal[logging.INFO, logging.DEBUG]
+_ALLOWED_LOG_LEVELS = frozenset[int]({logging.INFO, logging.DEBUG})
 
 
 @functools.cache
-def _configure_logging() -> None:
-    """Configure root logging to stdout and ``logs/app.log``."""
+def configure_logging(*, level: LogLevel) -> None:
+    """Configure application logging. Call once before :func:`get_logger`.
+
+    Args:
+        level: ``logging.INFO`` or ``logging.DEBUG`` only.
+
+    Raises:
+        ValueError: If ``level`` is not INFO or DEBUG.
+    """
+    if level not in _ALLOWED_LOG_LEVELS:
+        msg = f"level must be logging.INFO or logging.DEBUG, got {level!r}"
+        raise ValueError(msg)
+
     _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
-        level=logging.INFO,
+        level=level,
         format=_LOG_FORMAT,
         handlers=[
             logging.StreamHandler(),
@@ -100,9 +123,8 @@ def get_logger(name: str) -> logging.Logger:
         name: Logger name, typically ``__name__`` of the calling module.
 
     Returns:
-        A :class:`logging.Logger` with logging configured on first use.
+        A :class:`logging.Logger`. Requires :func:`configure_logging` first.
     """
-    _configure_logging()
     return logging.getLogger(name)
 ```
 
@@ -113,11 +135,10 @@ Keep real logic out of `main()`.
 Use `run()` for orchestration and `main()` as the final error boundary.
 
 ```python
+import logging
 import sys
 
-from package_name.logger import get_logger
-
-logger = get_logger(__name__)
+from package_name.logger import configure_logging, get_logger
 
 
 def run() -> None:
@@ -127,17 +148,25 @@ def run() -> None:
 
 def main() -> int:
     """Run the application and return a process exit code."""
+    configure_logging(level=logging.INFO)
+    logger = get_logger(__name__)
+
     try:
         run()
         return 0
-    except Exception:
-        logger.exception("Fatal error")
+    except Exception as exc:
+        logger.error(
+            f"Fatal error ({type(exc).__name__})",
+            exc_info=logger.isEnabledFor(logging.DEBUG),
+        )
         return 1
 
 
 if __name__ == "__main__":
     sys.exit(main())
 ```
+
+At **INFO**, the example logs `Fatal error (RuntimeError)` with no traceback. At **DEBUG**, the same `logger.error` call includes the traceback—no separate `logger.debug` line needed.
 
 # Naming
 
