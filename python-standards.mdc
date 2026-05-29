@@ -191,16 +191,35 @@ if match:
     handle(match)
 ```
 
-# Module-private constants
+# Module-private names
 
-Prefix module-level constants with a single leading underscore when they are used only within that file (not imported or re-exported elsewhere). Public names are reserved for values that are part of the module’s external API.
+Prefix module-level constants and functions with a single leading underscore when they are used only within that file (not imported or called from elsewhere). Public names are reserved for the module’s external API.
+
+Use one leading underscore only—do not use double underscores for module-level helpers (that pattern is for class name mangling).
 
 ```python
-# good — file-local tuning knobs
+# good — file-local constant
 _DNS_TIMEOUT_SECONDS = 5
 
 # good — shared or documented API surface
 DEFAULT_PAGE_SIZE = 50
+
+# good — internal helper, not part of the public API
+def _parse_retry_after(header: str) -> int:
+    ...
+
+
+# good — entry point callers import and use
+def fetch_config() -> Config:
+    raw = _read_env_file()
+    return _parse_config(raw)
+
+
+def _read_env_file() -> dict[str, str]:
+    ...
+
+def _parse_config(raw: dict[str, str]) -> Config:
+    ...
 ```
 
 # Google Python docstrings
