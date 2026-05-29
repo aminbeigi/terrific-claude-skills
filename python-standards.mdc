@@ -1,6 +1,6 @@
 ---
 description: Python 3.14, uv, logging, Ruff, pytest, and Google docstrings
-globs: "**/*.py"
+globs: **/*.py
 alwaysApply: false
 ---
 
@@ -141,7 +141,7 @@ if __name__ == "__main__":
 
 # Naming
 
-Do not use single-letter variable names except loop indices `i`, `j`, and `k` in `for` loops. Otherwise choose a name that describes what the value represents.
+Do not use single-letter variable names except loop indices `i`, `j`, and `k` in `for` loops, and `_` when the value is intentionally unused (e.g. `for _ in range(n)`). Otherwise choose a name that describes what the value represents.
 
 ```python
 # bad
@@ -158,6 +158,9 @@ error = get_error()
 payload = response.json()
 
 for i in range(10):
+    ...
+
+for _ in range(3):
     ...
 
 except ValueError as error:
@@ -288,20 +291,6 @@ Run tests with:
 Test business logic and observable behaviour — not implementation details. Each test should cover a meaningful outcome a user or caller would care about. Avoid tests that only verify internal state or private mechanics that could change without breaking any contract.
 
 Aim for a small number of high-impact tests rather than exhaustive coverage of trivial paths.
-
-## Test organisation
-
-Group tests into classes by the unit under test. Use one class per function or logical concern.
-
-```python
-class TestFetchEnvVariables:
-    def test_raises_when_aws_credentials_missing(...): ...
-    def test_raises_when_dist_directory_missing(...): ...
-    def test_returns_valid_config(...): ...
-
-class TestUploadToS3:
-    def test_uploads_all_files_with_relative_keys(...): ...
-```
 
 # Ruff after edits
 
