@@ -44,17 +44,12 @@ project/
 
 # Logging
 
-Use the standard library `logging` module—not `print()`, except for short-lived debugging.
+Use the standard library `logging` module — not `print()`, except for short-lived debugging.
 
-- Put logging setup in `src/<package_name>/logger.py`. Expose `configure_logging()` and `get_logger()`.
-- Call `configure_logging()` once at startup (in `main()`). In every other module, set `logger = get_logger(__name__)` at module scope (after imports), not inside functions.
-- Only two root log levels are allowed: `logging.INFO` (default) and `logging.DEBUG`.
+- Put logging setup in `src/<package_name>/logger.py`.
 - Write logs to stdout and to `logs/app.log`.
-- Before work starts, log a `Starting <action>...` message. Always end the message text with a literal ellipsis (`...`), e.g. `"Starting environment variable fetch..."`.
-- When a step finishes, log either `Successfully <action>` or `Failed <action>`—not both.
-- If the step **raises** to `main()`, log `Starting` / `Successfully` in the step and one `Failed …` in `main()` only. No per-step failure tracebacks—use the safe exception logging rules below.
-- Never log secrets, tokens, passwords, cookies, authorization headers, API keys, or sensitive personal data.
-- In `main()`, log failures at ERROR as `Fatal error: {exc}` (the exception message). Attach a traceback only when DEBUG is enabled (see entrypoint example below).
+- Log `Starting <action>...` before work begins (e.g. `"Starting environment variable fetch..."`).
+- When a step finishes, log `Successfully <action>` or `Failed <action>` — not both.
 
 Use `encoding="utf-8"` on the file handler.
 
@@ -64,107 +59,11 @@ Standard log format:
 _LOG_FORMAT = "%(asctime)s - %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
 ```
 
-Minimal `src/<package_name>/logger.py` template:
-
-```python
-"""Application logging configuration.
-
-Exposes :func:`configure_logging` and :func:`get_logger`.
-"""
-
-import functools
-import logging
-import sys
-from pathlib import Path
-from typing import Literal, get_args
-
-_LOG_FORMAT = (
-    "%(asctime)s - %(levelname)-5s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
-)
-_LOG_FILE = Path("logs") / "app.log"
-_DEFAULT_LOG_LEVEL = logging.INFO
-LogLevel = Literal[logging.INFO, logging.DEBUG]
-_ALLOWED_LOG_LEVELS = frozenset(get_args(LogLevel))
-
-
-@functools.cache
-def configure_logging(*, level: LogLevel = _DEFAULT_LOG_LEVEL) -> None:
-    """Configure application logging. Call once before :func:`get_logger`.
-
-    Args:
-        level: ``logging.INFO`` (default) or ``logging.DEBUG`` only.
-
-    Raises:
-        ValueError: If ``level`` is not INFO or DEBUG.
-    """
-    if level not in _ALLOWED_LOG_LEVELS:
-        message = f"level must be logging.INFO or logging.DEBUG, got {level!r}"
-        raise ValueError(message)
-
-    _LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-
-    logging.basicConfig(
-        level=level,
-        format=_LOG_FORMAT,
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-            logging.FileHandler(_LOG_FILE, encoding="utf-8"),
-        ],
-    )
-
-
-def get_logger(name: str) -> logging.Logger:
-    """Return a logger for the given module name.
-
-    Args:
-        name: Logger name, typically ``__name__`` of the calling module.
-
-    Returns:
-        A :class:`logging.Logger`. Requires :func:`configure_logging` first.
-    """
-    return logging.getLogger(name)
-```
-
 # Entrypoints
 
 Keep real logic out of `main()`.
 
 Use `run()` for orchestration and `main()` as the final error boundary.
-
-```python
-import logging
-import sys
-
-from package_name.logger import configure_logging, get_logger
-
-logger = get_logger(__name__)
-
-
-def run() -> None:
-    """Run the application."""
-    ...
-
-
-def main() -> int:
-    """Run the application and return a process exit code."""
-    configure_logging()
-
-    try:
-        run()
-        return 0
-    except Exception as exc:
-        logger.error(
-            f"Fatal error: {exc}",
-            exc_info=logger.isEnabledFor(logging.DEBUG),
-        )
-        return 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
-```
-
-At **INFO**, the example logs `Fatal error: something went wrong` with no traceback. At **DEBUG**, the same `logger.error` call includes the traceback—no separate `logger.debug` line needed.
 
 # Naming
 
@@ -192,6 +91,18 @@ for _ in range(3):
 
 except ValueError as error:
     ...
+```
+
+# String formatting
+
+Use f-strings for string formatting. Do not use `%s` (%-style) formatting.
+
+```python
+# bad
+message = "Hello, %s!" % name
+
+# good
+message = f"Hello, {name}!"
 ```
 
 # Control flow
