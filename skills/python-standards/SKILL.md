@@ -1,7 +1,6 @@
 ---
+name: python-standards
 description: Python 3.14, uv, logging, Ruff, pytest, and Google docstrings
-globs: **/*.py
-alwaysApply: false
 ---
 
 # Python version
