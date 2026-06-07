@@ -51,13 +51,6 @@ Use the standard library `logging` module — not `print()`, except for short-li
 - Log `Starting <action>...` before work begins (e.g. `"Starting environment variable fetch..."`).
 - When a step finishes, log `Successfully <action>` or `Failed <action>` — not both.
 
-Use `encoding="utf-8"` on the file handler.
-
-Standard log format:
-
-```python
-_LOG_FORMAT = "%(asctime)s - %(levelname)-8s - %(name)s - %(filename)s:%(lineno)d - %(message)s"
-```
 
 # Entrypoints
 
